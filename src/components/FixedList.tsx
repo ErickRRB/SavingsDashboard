@@ -3,6 +3,7 @@ import type { Currency } from '../lib/money';
 import { formatMoney } from '../lib/money';
 import MoneyInput from './MoneyInput';
 
+
 export interface FixedItem {
   id: string;
   nombre: string;
@@ -14,10 +15,12 @@ interface Props {
   onChange: (items: FixedItem[]) => void;
   currency: Currency;
   rate: number;
+
   rateLoaded: boolean;
 }
 
 const FixedList = ({ items, onChange, currency, rate, rateLoaded }: Props) => {
+
   const [nombre, setNombre] = useState('');
   const [montoARS, setMontoARS] = useState(0);
 

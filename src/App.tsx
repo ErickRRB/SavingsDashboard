@@ -10,12 +10,15 @@ import { computeMonthMetrics } from './lib/calc';
 import type { DayMetric } from './lib/calc';
 import type { Currency } from './lib/money';
 import { formatMoney } from './lib/money';
+
 import MoneyInput from './components/MoneyInput';
+
 
 function App() {
   const [currency, setCurrency] = useState<Currency>(() =>
     getJSON('bt.currency', 'ARS'),
   );
+
   const initialRate = getNumber('bt.rate', 0);
   const [rate, setRate] = useState(initialRate || 1);
   const [rateLoaded, setRateLoaded] = useState(initialRate > 0);
@@ -54,6 +57,13 @@ function App() {
       .then((data) => setRate(data.rates.ARS))
       .catch(() => {})
       .finally(() => setRateLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    fetch('https://open.er-api.com/v6/latest/USD')
+      .then((r) => r.json())
+      .then((data) => setRate(data.rates.ARS))
+      .catch(() => setRate(1));
   }, []);
 
   useEffect(() => {
@@ -160,31 +170,37 @@ function App() {
                 className="border rounded px-2 py-1"
               >
                 <option value="ARS">ARS</option>
+
                 <option value="USD" disabled={!rateLoaded && currency !== 'USD'}>
                   USD
                 </option>
+
               </select>
             </label>
             <label className="flex flex-col flex-1 min-w-40">
               <span className="text-sm">Salario mensual ({currency})</span>
+
               <MoneyInput
                 ariaLabel="Salario mensual"
                 valueARS={salary}
                 onChange={setSalary}
                 currency={currency}
                 rate={rate}
+
                 className="border rounded px-2 py-1"
                 disabled={currency === 'USD' && !rateLoaded}
               />
             </label>
             <label className="flex flex-col flex-1 min-w-40">
               <span className="text-sm">Ahorro deseado ({currency})</span>
+
               <MoneyInput
                 ariaLabel="Ahorro deseado"
                 valueARS={desiredSavings}
                 onChange={setDesiredSavings}
                 currency={currency}
                 rate={rate}
+
                 className="border rounded px-2 py-1"
                 disabled={currency === 'USD' && !rateLoaded}
               />
@@ -197,7 +213,9 @@ function App() {
               onChange={setFixedList}
               currency={currency}
               rate={rate}
+
               rateLoaded={rateLoaded}
+
             />
             <div className="text-sm mt-1">
               Total fijos: {formatMoney(fixedTotal, currency, rate)}
@@ -239,7 +257,9 @@ function App() {
           onChange={handleSpendChange}
           currency={currency}
           rate={rate}
+
           rateLoaded={rateLoaded}
+
         />
       </section>
 
