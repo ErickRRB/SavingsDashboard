@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { Currency } from '../lib/money';
 import { formatMoney } from '../lib/money';
+import MoneyInput from './MoneyInput';
+
 
 export interface FixedItem {
   id: string;
@@ -13,22 +15,25 @@ interface Props {
   onChange: (items: FixedItem[]) => void;
   currency: Currency;
   rate: number;
+
+  rateLoaded: boolean;
 }
 
-const FixedList = ({ items, onChange, currency, rate }: Props) => {
+const FixedList = ({ items, onChange, currency, rate, rateLoaded }: Props) => {
+
   const [nombre, setNombre] = useState('');
-  const [monto, setMonto] = useState('');
+  const [montoARS, setMontoARS] = useState(0);
 
   const addItem = () => {
-    if (!nombre || !monto) return;
+    if (!nombre || !montoARS) return;
     const newItem: FixedItem = {
       id: crypto.randomUUID(),
       nombre,
-      montoARS: Number(monto) * (currency === 'ARS' ? 1 : rate),
+      montoARS,
     };
     onChange([...items, newItem]);
     setNombre('');
-    setMonto('');
+    setMontoARS(0);
   };
 
   const remove = (id: string) => {
@@ -60,12 +65,15 @@ const FixedList = ({ items, onChange, currency, rate }: Props) => {
           className="border rounded px-2 py-1 flex-1"
           placeholder="Nombre"
         />
-        <input
-          aria-label="Monto gasto fijo"
-          value={monto}
-          onChange={(e) => setMonto(e.target.value)}
+        <MoneyInput
+          ariaLabel="Monto gasto fijo"
+          valueARS={montoARS}
+          onChange={setMontoARS}
+          currency={currency}
+          rate={rate}
           className="border rounded px-2 py-1 w-28"
           placeholder={currency}
+          disabled={currency === 'USD' && !rateLoaded}
         />
         <button
           onClick={addItem}

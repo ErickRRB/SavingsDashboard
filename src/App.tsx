@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import KPICard from './components/KPICard';
 import FixedList from './components/FixedList';
 import type { FixedItem } from './components/FixedList';
@@ -11,11 +11,17 @@ import type { DayMetric } from './lib/calc';
 import type { Currency } from './lib/money';
 import { formatMoney } from './lib/money';
 
+import MoneyInput from './components/MoneyInput';
+
+
 function App() {
   const [currency, setCurrency] = useState<Currency>(() =>
     getJSON('bt.currency', 'ARS'),
   );
-  const [rate, setRate] = useState(1);
+
+  const initialRate = getNumber('bt.rate', 0);
+  const [rate, setRate] = useState(initialRate || 1);
+  const [rateLoaded, setRateLoaded] = useState(initialRate > 0);
   const [salary, setSalary] = useState(() => getNumber('bt.salary', 0));
   const [desiredSavings, setDesiredSavings] = useState(() =>
     getNumber('bt.desiredSavings', 0),
@@ -35,7 +41,23 @@ function App() {
   useEffect(() => setNumber('bt.desiredSavings', desiredSavings), [desiredSavings]);
   useEffect(() => setJSON('bt.fixedList', fixedList), [fixedList]);
   useEffect(() => setJSON('bt.yearMonth', yearMonth), [yearMonth]);
-  useEffect(() => setJSON(`bt.spend.${yearMonth}`, spendMap), [spendMap, yearMonth]);
+  const prevYearMonth = useRef(yearMonth);
+  useEffect(() => {
+    if (prevYearMonth.current !== yearMonth) {
+      prevYearMonth.current = yearMonth;
+      return;
+    }
+    setJSON(`bt.spend.${yearMonth}`, spendMap);
+  }, [spendMap, yearMonth]);
+  useEffect(() => setNumber('bt.rate', rate), [rate]);
+
+  useEffect(() => {
+    fetch('https://open.er-api.com/v6/latest/USD')
+      .then((r) => r.json())
+      .then((data) => setRate(data.rates.ARS))
+      .catch(() => {})
+      .finally(() => setRateLoaded(true));
+  }, []);
 
   useEffect(() => {
     fetch('https://open.er-api.com/v6/latest/USD')
@@ -148,41 +170,39 @@ function App() {
                 className="border rounded px-2 py-1"
               >
                 <option value="ARS">ARS</option>
-                <option value="USD">USD</option>
+
+                <option value="USD" disabled={!rateLoaded && currency !== 'USD'}>
+                  USD
+                </option>
+
               </select>
             </label>
             <label className="flex flex-col flex-1 min-w-40">
               <span className="text-sm">Salario mensual ({currency})</span>
-              <input
-                aria-label="Salario mensual"
-                value={
-                  currency === 'ARS'
-                    ? salary
-                    : (salary / rate).toFixed(2)
-                }
-                onChange={(e) =>
-                  setSalary(
-                    Number(e.target.value) * (currency === 'ARS' ? 1 : rate),
-                  )
-                }
+
+              <MoneyInput
+                ariaLabel="Salario mensual"
+                valueARS={salary}
+                onChange={setSalary}
+                currency={currency}
+                rate={rate}
+
                 className="border rounded px-2 py-1"
+                disabled={currency === 'USD' && !rateLoaded}
               />
             </label>
             <label className="flex flex-col flex-1 min-w-40">
               <span className="text-sm">Ahorro deseado ({currency})</span>
-              <input
-                aria-label="Ahorro deseado"
-                value={
-                  currency === 'ARS'
-                    ? desiredSavings
-                    : (desiredSavings / rate).toFixed(2)
-                }
-                onChange={(e) =>
-                  setDesiredSavings(
-                    Number(e.target.value) * (currency === 'ARS' ? 1 : rate),
-                  )
-                }
+
+              <MoneyInput
+                ariaLabel="Ahorro deseado"
+                valueARS={desiredSavings}
+                onChange={setDesiredSavings}
+                currency={currency}
+                rate={rate}
+
                 className="border rounded px-2 py-1"
+                disabled={currency === 'USD' && !rateLoaded}
               />
             </label>
           </div>
@@ -193,6 +213,9 @@ function App() {
               onChange={setFixedList}
               currency={currency}
               rate={rate}
+
+              rateLoaded={rateLoaded}
+
             />
             <div className="text-sm mt-1">
               Total fijos: {formatMoney(fixedTotal, currency, rate)}
@@ -234,6 +257,9 @@ function App() {
           onChange={handleSpendChange}
           currency={currency}
           rate={rate}
+
+          rateLoaded={rateLoaded}
+
         />
       </section>
 

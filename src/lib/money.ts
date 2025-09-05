@@ -6,14 +6,11 @@ export const formatMoney = (
   rate: number,
 ): string => {
   const amount = currency === 'ARS' ? value : value / rate;
-  return amount.toLocaleString(
-    currency === 'ARS' ? 'es-AR' : 'en-US',
-    {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: currency === 'ARS' ? 0 : 2,
-    },
-  );
+  return amount.toLocaleString('es-AR', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  });
 };
 
 export const formatARS = (value: number): string =>

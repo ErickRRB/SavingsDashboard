@@ -1,15 +1,17 @@
 import type { DayMetric } from '../lib/calc';
 import type { Currency } from '../lib/money';
 import { formatMoney } from '../lib/money';
+import MoneyInput from './MoneyInput';
 
 interface Props {
   metrics: DayMetric[];
   onChange: (key: string, value: number) => void;
   currency: Currency;
   rate: number;
+  rateLoaded: boolean;
 }
 
-const MonthTable = ({ metrics, onChange, currency, rate }: Props) => (
+const MonthTable = ({ metrics, onChange, currency, rate, rateLoaded }: Props) => (
   <div className="overflow-x-auto">
     <table className="min-w-full text-sm">
       <thead>
@@ -39,21 +41,14 @@ const MonthTable = ({ metrics, onChange, currency, rate }: Props) => (
               <td className="p-2 whitespace-nowrap">{m.dateKey}</td>
               <td className="p-2 capitalize">{m.weekday}</td>
               <td className="p-2">
-                <input
-                  aria-label={`Gasto ${m.dateKey}`}
-                  value={
-                    currency === 'ARS'
-                      ? m.gastoDia
-                      : (m.gastoDia / rate).toFixed(2)
-                  }
-                  onChange={(e) =>
-                    onChange(
-                      m.dateKey,
-                      Number(e.target.value) *
-                        (currency === 'ARS' ? 1 : rate),
-                    )
-                  }
+                <MoneyInput
+                  ariaLabel={`Gasto ${m.dateKey}`}
+                  valueARS={m.gastoDia}
+                  onChange={(v) => onChange(m.dateKey, v)}
+                  currency={currency}
+                  rate={rate}
                   className={`w-24 px-2 py-1 rounded ${inputColor}`}
+                  disabled={currency === 'USD' && !rateLoaded}
                 />
               </td>
               <td className="p-2">{formatMoney(m.gastoAcumulado, currency, rate)}</td>
