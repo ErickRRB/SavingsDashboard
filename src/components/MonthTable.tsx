@@ -1,12 +1,15 @@
 import type { DayMetric } from '../lib/calc';
-import { formatARS } from '../lib/money';
+import type { Currency } from '../lib/money';
+import { formatMoney } from '../lib/money';
 
 interface Props {
   metrics: DayMetric[];
   onChange: (key: string, value: number) => void;
+  currency: Currency;
+  rate: number;
 }
 
-const MonthTable = ({ metrics, onChange }: Props) => (
+const MonthTable = ({ metrics, onChange, currency, rate }: Props) => (
   <div className="overflow-x-auto">
     <table className="min-w-full text-sm">
       <thead>
@@ -37,17 +40,28 @@ const MonthTable = ({ metrics, onChange }: Props) => (
               <td className="p-2 capitalize">{m.weekday}</td>
               <td className="p-2">
                 <input
-                  type="number"
                   aria-label={`Gasto ${m.dateKey}`}
-                  value={m.gastoDia}
-                  onChange={(e) => onChange(m.dateKey, Number(e.target.value))}
+                  value={
+                    currency === 'ARS'
+                      ? m.gastoDia
+                      : (m.gastoDia / rate).toFixed(2)
+                  }
+                  onChange={(e) =>
+                    onChange(
+                      m.dateKey,
+                      Number(e.target.value) *
+                        (currency === 'ARS' ? 1 : rate),
+                    )
+                  }
                   className={`w-24 px-2 py-1 rounded ${inputColor}`}
                 />
               </td>
-              <td className="p-2">{formatARS(m.gastoAcumulado)}</td>
+              <td className="p-2">{formatMoney(m.gastoAcumulado, currency, rate)}</td>
               <td className="p-2">{m.diasRestantes}</td>
-              <td className="p-2">{formatARS(Math.max(m.presupuestoRestante, 0))}</td>
-              <td className="p-2">{formatARS(m.cupoDeHoy)}</td>
+              <td className="p-2">
+                {formatMoney(Math.max(m.presupuestoRestante, 0), currency, rate)}
+              </td>
+              <td className="p-2">{formatMoney(m.cupoDeHoy, currency, rate)}</td>
               <td className="p-2">
                 {m.estado && (
                   <span
@@ -61,8 +75,12 @@ const MonthTable = ({ metrics, onChange }: Props) => (
                   </span>
                 )}
               </td>
-              <td className={`p-2 ${m.desvio >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatARS(m.desvio)}
+              <td
+                className={`p-2 ${
+                  m.desvio >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {formatMoney(m.desvio, currency, rate)}
               </td>
             </tr>
           );
