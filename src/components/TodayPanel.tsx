@@ -1,18 +1,21 @@
 import type { DayMetric } from '../lib/calc';
-import { formatARS } from '../lib/money';
+import type { Currency } from '../lib/money';
+import { formatMoney } from '../lib/money';
 
 interface Props {
   info: DayMetric | undefined;
+  currency: Currency;
+  rate: number;
 }
 
-const TodayPanel = ({ info }: Props) => {
+const TodayPanel = ({ info, currency, rate }: Props) => {
   if (!info) return null;
   return (
     <div className="p-4 rounded-2xl bg-white shadow-sm">
       <h3 className="font-bold mb-2">Hoy</h3>
       <div className="space-y-1 text-sm">
-        <div>Cupo de hoy: {formatARS(info.cupoDeHoy)}</div>
-        <div>Gastado hoy: {formatARS(info.gastoDia)}</div>
+        <div>Cupo de hoy: {formatMoney(info.cupoDeHoy, currency, rate)}</div>
+        <div>Gastado hoy: {formatMoney(info.gastoDia, currency, rate)}</div>
         <div>
           Estado:{' '}
           {info.estado ? (
@@ -29,7 +32,9 @@ const TodayPanel = ({ info }: Props) => {
             '—'
           )}
         </div>
-        <div>Restante mes: {formatARS(Math.max(info.presupuestoRestante, 0))}</div>
+        <div>
+          Restante mes: {formatMoney(Math.max(info.presupuestoRestante, 0), currency, rate)}
+        </div>
         <div>Días restantes: {info.diasRestantes}</div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import KPICard from './components/KPICard';
 import FixedList from './components/FixedList';
 import type { FixedItem } from './components/FixedList';
@@ -8,22 +8,53 @@ import { getNumber, setNumber, getJSON, setJSON } from './lib/storage';
 import { currentYearMonth, dateKey } from './lib/date';
 import { computeMonthMetrics } from './lib/calc';
 import type { DayMetric } from './lib/calc';
-import { formatARS } from './lib/money';
+import type { Currency } from './lib/money';
+import { formatMoney } from './lib/money';
+import MoneyInput from './components/MoneyInput';
 
 function App() {
+  const [currency, setCurrency] = useState<Currency>(() =>
+    getJSON('bt.currency', 'ARS'),
+  );
+  const initialRate = getNumber('bt.rate', 0);
+  const [rate, setRate] = useState(initialRate || 1);
+  const [rateLoaded, setRateLoaded] = useState(initialRate > 0);
   const [salary, setSalary] = useState(() => getNumber('bt.salary', 0));
-  const [desiredSavings, setDesiredSavings] = useState(() => getNumber('bt.desiredSavings', 0));
-  const [fixedList, setFixedList] = useState<FixedItem[]>(() => getJSON('bt.fixedList', []));
-  const [yearMonth, setYearMonth] = useState(() => getJSON('bt.yearMonth', currentYearMonth()));
+  const [desiredSavings, setDesiredSavings] = useState(() =>
+    getNumber('bt.desiredSavings', 0),
+  );
+  const [fixedList, setFixedList] = useState<FixedItem[]>(() =>
+    getJSON('bt.fixedList', []),
+  );
+  const [yearMonth, setYearMonth] = useState(() =>
+    getJSON('bt.yearMonth', currentYearMonth()),
+  );
   const [spendMap, setSpendMap] = useState<Record<string, number>>(() =>
-    getJSON(`bt.spend.${yearMonth}`, {})
+    getJSON(`bt.spend.${yearMonth}`, {}),
   );
 
+  useEffect(() => setJSON('bt.currency', currency), [currency]);
   useEffect(() => setNumber('bt.salary', salary), [salary]);
   useEffect(() => setNumber('bt.desiredSavings', desiredSavings), [desiredSavings]);
   useEffect(() => setJSON('bt.fixedList', fixedList), [fixedList]);
   useEffect(() => setJSON('bt.yearMonth', yearMonth), [yearMonth]);
-  useEffect(() => setJSON(`bt.spend.${yearMonth}`, spendMap), [spendMap, yearMonth]);
+  const prevYearMonth = useRef(yearMonth);
+  useEffect(() => {
+    if (prevYearMonth.current !== yearMonth) {
+      prevYearMonth.current = yearMonth;
+      return;
+    }
+    setJSON(`bt.spend.${yearMonth}`, spendMap);
+  }, [spendMap, yearMonth]);
+  useEffect(() => setNumber('bt.rate', rate), [rate]);
+
+  useEffect(() => {
+    fetch('https://open.er-api.com/v6/latest/USD')
+      .then((r) => r.json())
+      .then((data) => setRate(data.rates.ARS))
+      .catch(() => {})
+      .finally(() => setRateLoaded(true));
+  }, []);
 
   useEffect(() => {
     setSpendMap(getJSON(`bt.spend.${yearMonth}`, {}));
@@ -121,48 +152,99 @@ function App() {
         <h2 className="text-xl font-semibold">Config</h2>
         <div className="space-y-2">
           <div className="flex gap-2 flex-wrap">
-            <label className="flex flex-col flex-1 min-w-40">
-              <span className="text-sm">Salario mensual (ARS)</span>
-              <input
-                type="number"
-                aria-label="Salario mensual"
-                value={salary}
-                onChange={(e) => setSalary(Number(e.target.value))}
+            <label className="flex flex-col min-w-40">
+              <span className="text-sm">Moneda</span>
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as Currency)}
                 className="border rounded px-2 py-1"
+              >
+                <option value="ARS">ARS</option>
+                <option value="USD" disabled={!rateLoaded && currency !== 'USD'}>
+                  USD
+                </option>
+              </select>
+            </label>
+            <label className="flex flex-col flex-1 min-w-40">
+              <span className="text-sm">Salario mensual ({currency})</span>
+              <MoneyInput
+                ariaLabel="Salario mensual"
+                valueARS={salary}
+                onChange={setSalary}
+                currency={currency}
+                rate={rate}
+                className="border rounded px-2 py-1"
+                disabled={currency === 'USD' && !rateLoaded}
               />
             </label>
             <label className="flex flex-col flex-1 min-w-40">
-              <span className="text-sm">Ahorro deseado (ARS)</span>
-              <input
-                type="number"
-                aria-label="Ahorro deseado"
-                value={desiredSavings}
-                onChange={(e) => setDesiredSavings(Number(e.target.value))}
+              <span className="text-sm">Ahorro deseado ({currency})</span>
+              <MoneyInput
+                ariaLabel="Ahorro deseado"
+                valueARS={desiredSavings}
+                onChange={setDesiredSavings}
+                currency={currency}
+                rate={rate}
                 className="border rounded px-2 py-1"
+                disabled={currency === 'USD' && !rateLoaded}
               />
             </label>
           </div>
           <div>
             <h3 className="font-semibold mb-1">Gastos fijos</h3>
-            <FixedList items={fixedList} onChange={setFixedList} />
-            <div className="text-sm mt-1">Total fijos: {formatARS(fixedTotal)}</div>
+            <FixedList
+              items={fixedList}
+              onChange={setFixedList}
+              currency={currency}
+              rate={rate}
+              rateLoaded={rateLoaded}
+            />
+            <div className="text-sm mt-1">
+              Total fijos: {formatMoney(fixedTotal, currency, rate)}
+            </div>
           </div>
         </div>
       </section>
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KPICard label="Fijos del mes" value={fixedTotal} />
-        <KPICard label="Variable disponible" value={variableBudget} />
-        <KPICard label="Gastado variable" value={variableSpent} />
-        <KPICard label="Restante variable" value={variableRemaining} />
+        <KPICard
+          label="Fijos del mes"
+          value={fixedTotal}
+          currency={currency}
+          rate={rate}
+        />
+        <KPICard
+          label="Variable disponible"
+          value={variableBudget}
+          currency={currency}
+          rate={rate}
+        />
+        <KPICard
+          label="Gastado variable"
+          value={variableSpent}
+          currency={currency}
+          rate={rate}
+        />
+        <KPICard
+          label="Restante variable"
+          value={variableRemaining}
+          currency={currency}
+          rate={rate}
+        />
       </section>
 
       <section>
-        <MonthTable metrics={metrics} onChange={handleSpendChange} />
+        <MonthTable
+          metrics={metrics}
+          onChange={handleSpendChange}
+          currency={currency}
+          rate={rate}
+          rateLoaded={rateLoaded}
+        />
       </section>
 
       <section>
-        <TodayPanel info={todayInfo} />
+        <TodayPanel info={todayInfo} currency={currency} rate={rate} />
       </section>
     </div>
   );

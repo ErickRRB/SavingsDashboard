@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { formatARS } from '../lib/money';
+import type { Currency } from '../lib/money';
+import { formatMoney } from '../lib/money';
+import MoneyInput from './MoneyInput';
 
 export interface FixedItem {
   id: string;
@@ -10,22 +12,25 @@ export interface FixedItem {
 interface Props {
   items: FixedItem[];
   onChange: (items: FixedItem[]) => void;
+  currency: Currency;
+  rate: number;
+  rateLoaded: boolean;
 }
 
-const FixedList = ({ items, onChange }: Props) => {
+const FixedList = ({ items, onChange, currency, rate, rateLoaded }: Props) => {
   const [nombre, setNombre] = useState('');
-  const [monto, setMonto] = useState('');
+  const [montoARS, setMontoARS] = useState(0);
 
   const addItem = () => {
-    if (!nombre || !monto) return;
+    if (!nombre || !montoARS) return;
     const newItem: FixedItem = {
       id: crypto.randomUUID(),
       nombre,
-      montoARS: Number(monto),
+      montoARS,
     };
     onChange([...items, newItem]);
     setNombre('');
-    setMonto('');
+    setMontoARS(0);
   };
 
   const remove = (id: string) => {
@@ -38,7 +43,7 @@ const FixedList = ({ items, onChange }: Props) => {
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-2">
             <span className="flex-1">{item.nombre}</span>
-            <span>{formatARS(item.montoARS)}</span>
+            <span>{formatMoney(item.montoARS, currency, rate)}</span>
             <button
               onClick={() => remove(item.id)}
               aria-label="Eliminar gasto fijo"
@@ -57,13 +62,15 @@ const FixedList = ({ items, onChange }: Props) => {
           className="border rounded px-2 py-1 flex-1"
           placeholder="Nombre"
         />
-        <input
-          aria-label="Monto gasto fijo"
-          type="number"
-          value={monto}
-          onChange={(e) => setMonto(e.target.value)}
+        <MoneyInput
+          ariaLabel="Monto gasto fijo"
+          valueARS={montoARS}
+          onChange={setMontoARS}
+          currency={currency}
+          rate={rate}
           className="border rounded px-2 py-1 w-28"
-          placeholder="ARS"
+          placeholder={currency}
+          disabled={currency === 'USD' && !rateLoaded}
         />
         <button
           onClick={addItem}
