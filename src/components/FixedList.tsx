@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { formatARS } from '../lib/money';
+import type { Currency } from '../lib/money';
+import { formatMoney } from '../lib/money';
 
 export interface FixedItem {
   id: string;
@@ -10,9 +11,11 @@ export interface FixedItem {
 interface Props {
   items: FixedItem[];
   onChange: (items: FixedItem[]) => void;
+  currency: Currency;
+  rate: number;
 }
 
-const FixedList = ({ items, onChange }: Props) => {
+const FixedList = ({ items, onChange, currency, rate }: Props) => {
   const [nombre, setNombre] = useState('');
   const [monto, setMonto] = useState('');
 
@@ -21,7 +24,7 @@ const FixedList = ({ items, onChange }: Props) => {
     const newItem: FixedItem = {
       id: crypto.randomUUID(),
       nombre,
-      montoARS: Number(monto),
+      montoARS: Number(monto) * (currency === 'ARS' ? 1 : rate),
     };
     onChange([...items, newItem]);
     setNombre('');
@@ -38,7 +41,7 @@ const FixedList = ({ items, onChange }: Props) => {
         {items.map((item) => (
           <li key={item.id} className="flex items-center gap-2">
             <span className="flex-1">{item.nombre}</span>
-            <span>{formatARS(item.montoARS)}</span>
+            <span>{formatMoney(item.montoARS, currency, rate)}</span>
             <button
               onClick={() => remove(item.id)}
               aria-label="Eliminar gasto fijo"
@@ -59,11 +62,10 @@ const FixedList = ({ items, onChange }: Props) => {
         />
         <input
           aria-label="Monto gasto fijo"
-          type="number"
           value={monto}
           onChange={(e) => setMonto(e.target.value)}
           className="border rounded px-2 py-1 w-28"
-          placeholder="ARS"
+          placeholder={currency}
         />
         <button
           onClick={addItem}
