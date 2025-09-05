@@ -43,19 +43,27 @@ const MoneyInput = ({
     const raw = e.target.value.replace(/[^\d.,]/g, '');
     const lastComma = raw.lastIndexOf(',');
     const lastDot = raw.lastIndexOf('.');
-    const sepIndex = Math.max(lastComma, lastDot);
+    let sepIndex = Math.max(lastComma, lastDot);
     let intPart = raw;
     let decPart = '';
     let trailing = false;
-    if (sepIndex >= 0) {
-      intPart = raw.slice(0, sepIndex);
-      decPart = raw.slice(sepIndex + 1).replace(/[.,]/g, '');
-      trailing = sepIndex === raw.length - 1;
+
+    if (sepIndex !== -1) {
+      const digitsAfter = raw.length - sepIndex - 1;
+      if (digitsAfter > 2) {
+        sepIndex = -1;
+      } else {
+        intPart = raw.slice(0, sepIndex);
+        decPart = raw.slice(sepIndex + 1).replace(/[.,]/g, '');
+        trailing = digitsAfter === 0;
+      }
     }
+
     intPart = intPart.replace(/[.,]/g, '');
     decPart = decPart.slice(0, 2);
     const num = Number(intPart + (decPart ? '.' + decPart : ''));
     onChange(currency === 'ARS' ? num : num * rate);
+
     const locale = currency === 'ARS' ? 'es-AR' : 'en-US';
     const decimalSymbol = currency === 'ARS' ? ',' : '.';
     const formatter = new Intl.NumberFormat(locale, {
